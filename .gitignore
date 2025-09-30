@@ -1,0 +1,19 @@
+# Maven target directory
+/target/
+
+# Local Maven repository cache
+/.m2/
+
+# IDE files
+.idea/
+*.iml
+.project
+.classpath
+.settings/
+
+# OS files
+.DS_Store
+
+# Build tool wrappers
+mvnw
+mvnw.cmd
