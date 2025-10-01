@@ -28,7 +28,7 @@ public class NotificationController {
                 .body(notification);
     }
 
-    @GetMapping("/db")
+    @GetMapping("/db/all")
     public ResponseEntity<List<Notification>> getAllNotifications() {
         return ResponseEntity.ok(notificationService.getAllNotifications());
     }
