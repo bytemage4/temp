@@ -1,14 +1,13 @@
 package com.bytemage4.notification;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-
-@SpringBootTest
-@ActiveProfiles("test")
+/**
+ * Unit tests should test individual components with mocked dependencies.
+ * See:
+ * - controller package tests for MockMvc-based controller unit tests
+ * - service package tests for service layer unit tests with mocked repositories
+ * 
+ * For full integration tests with real MySQL database, see NotificationIntegrationTest.
+ */
 class NotificationApplicationTests {
-
-    @Test
-    void contextLoads() {
-    }
+    // Unit test examples will be added in specific package test classes
 }
