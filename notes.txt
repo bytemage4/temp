@@ -1,0 +1,30 @@
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@SpringBootTest(
+  classes = ActuatorOnlyConfig.class,
+  webEnvironment = SpringBootTest.WebEnvironment.MOCK
+)
+@AutoConfigureMockMvc
+@ActiveProfiles("actuator")  // <- forces a separate cache key
+@TestPropertySource(properties = {
+  // Exclude heavy autoconfig you don’t need
+  "spring.autoconfigure.exclude=" +
+    "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration," +
+    "org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration"
+})
+public @interface ActuatorMvcTest {}
+
+@SpringBootConfiguration
+@EnableAutoConfiguration
+@ImportAutoConfiguration({
+  // minimal web + json stack
+  org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration.class,
+  org.springframework.boot.autoconfigure.http.HttpMessageConvertersAutoConfiguration.class,
+  org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration.class,
+  // actuator pieces for /actuator/health over MVC
+  org.springframework.boot.actuate.autoconfigure.endpoint.EndpointAutoConfiguration.class,
+  org.springframework.boot.actuate.autoconfigure.health.HealthContributorAutoConfiguration.class,
+  org.springframework.boot.actuate.autoconfigure.health.HealthEndpointAutoConfiguration.class,
+  org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointAutoConfiguration.class
+})
+class ActuatorOnlyConfig {}
