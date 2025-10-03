@@ -28,3 +28,11 @@ public @interface ActuatorMvcTest {}
   org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointAutoConfiguration.class
 })
 class ActuatorOnlyConfig {}
+
+
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@WebMvcTest  // default filters = true
+@ActiveProfiles("webmvc")                   // distinct cache key
+@TestPropertySource(properties = "test.slice=webmvc") // extra guard
+public @interface ControllerMvcTest {}
