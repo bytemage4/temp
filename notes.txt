@@ -1,24 +1,38 @@
-# Print a shortened branch name:
-# - If it finds a JIRA-like key anywhere (e.g., NT-123), show just that.
-# - Otherwise, fall back to the normal branch name (short, or short SHA for detached HEAD).
-function git_current_branch() {
-  local ref
-  ref=$(
-    command git symbolic-ref --quiet --short HEAD 2>/dev/null ||
-    command git describe --tags --exact-match 2>/dev/null ||
-    command git rev-parse --short HEAD 2>/dev/null
-  ) || return
+# --- debug log target ---
+typeset -g SHORT_BRANCH_DEBUG=/tmp/zsh_git_branch_debug.log
 
-  # Trim any prefix like feature/, bugfix/, etc.
-  local base=${ref##*/}
-
-  # If there's a KEY-123 pattern, extract and print just that.
-  # (Keeps letters+digits on the left side to support keys like NT or PROJ1.)
-  local ticket
-  ticket=$(print -r -- "$base" | sed -E 's/^.*([A-Za-z][A-Za-z0-9]*-[0-9]+).*$/\1/')
-  if [[ "$ticket" != "$base" || "$base" =~ '^[A-Za-z][A-Za-z0-9]*-[0-9]+' ]]; then
-    print -r -- "$ticket"
+# Helper: shorten "feature/NT-123-something-else" -> "NT-123"
+function _shorten_ticket() {
+  emulate -L zsh
+  local s=${1##*/}               # drop any refs like feature/, bugfix/, etc.
+  if [[ $s =~ ([A-Za-z][A-Za-z0-9]*-[0-9]+) ]]; then
+    print -r -- ${match[1]}
   else
-    print -r -- "$base"
+    print -r -- $s
   fi
+}
+
+# Keep original oh-my-zsh function so we can call it
+if typeset -f git_current_branch >/dev/null; then
+  functions[orig_git_current_branch]=$functions[git_current_branch]
+fi
+
+# Our wrapper: call original, shorten, log in/out to a file
+function git_current_branch() {
+  emulate -L zsh
+  local in out
+  if typeset -f orig_git_current_branch >/dev/null; then
+    in="$(orig_git_current_branch 2>/dev/null)" || { print -r -- "MISS (not in repo?)" >>$SHORT_BRANCH_DEBUG; return }
+  else
+    # Fallback if theme replaced it completely
+    in=$(
+      command git symbolic-ref --quiet --short HEAD 2>/dev/null ||
+      command git describe --tags --exact-match 2>/dev/null ||
+      command git rev-parse --short HEAD 2>/dev/null
+    ) || { print -r -- "MISS (no ref)" >>$SHORT_BRANCH_DEBUG; return }
+  fi
+
+  out="$(_shorten_ticket "$in")"
+  print -r -- "IN:[$in]  OUT:[$out]" >>$SHORT_BRANCH_DEBUG
+  print -r -- "$out"
 }
