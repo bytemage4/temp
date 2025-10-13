@@ -1,13 +1,5 @@
-# --- debug file so we can see what the theme is using ---
+# --- debug file ---
 typeset -g SHORT_BRANCH_DEBUG=/tmp/zsh_git_branch_debug.log
-
-# Keep originals in case you want to revert
-if typeset -f git_prompt_info >/dev/null; then
-  functions[orig_git_prompt_info]=$functions[git_prompt_info]
-fi
-if typeset -f git_prompt_status >/dev/null; then
-  functions[orig_git_prompt_status]=$functions[git_prompt_status]
-fi
 
 # Helper: extract ticket key like NT-123 from any branch name
 function _shorten_ticket() {
@@ -20,25 +12,22 @@ function _shorten_ticket() {
   fi
 }
 
-# Replace the robbyrussell/oh-my-zsh git segment with a shortened branch
+# Override robbyrussell's git segment with a shortened branch name
 function git_prompt_info() {
   emulate -L zsh
-  # Recompute branch the same way oh-my-zsh does, then shorten it
-  local b
+  local b short gp_status
   b=$(
     command git symbolic-ref --quiet --short HEAD 2>/dev/null ||
     command git describe --tags --exact-match 2>/dev/null ||
     command git rev-parse --short HEAD 2>/dev/null
   ) || return
 
-  local short=$(_shorten_ticket "$b")
-  local status=""
+  short=$(_shorten_ticket "$b")
+
   if typeset -f git_prompt_status >/dev/null; then
-    status="$(git_prompt_status)"
+    gp_status="$(git_prompt_status)"
   fi
 
-  print -r -- "IN:[$b] OUT:[$short] STATUS:[$status]" >> $SHORT_BRANCH_DEBUG
-
-  # Preserve robbyrussell styling via the same variables it uses
-  print -r -- "${ZSH_THEME_GIT_PROMPT_PREFIX}${short}${status}${ZSH_THEME_GIT_PROMPT_SUFFIX}"
+  print -r -- "IN:[$b] OUT:[$short] STATUS:[$gp_status]" >> $SHORT_BRANCH_DEBUG
+  print -r -- "${ZSH_THEME_GIT_PROMPT_PREFIX}${short}${gp_status}${ZSH_THEME_GIT_PROMPT_SUFFIX}"
 }
