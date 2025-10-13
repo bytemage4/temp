@@ -1,36 +1,38 @@
+# Shorten "feature/NT-123-long-title" -> "NT-123"
+_shorten_ticket() {
+  emulate -L zsh
+  local base=${1##*/}
+  if [[ $base =~ ([A-Za-z][A-Za-z0-9]*-[0-9]+) ]]; then
+    print -r -- ${match[1]}
+  else
+    print -r -- $base
+  fi
+}
+
 git_prompt_info() {
   emulate -L zsh
-  local b short gs prefix suffix open_color derived_suffix
+  local b short gp_status open_color reset="%{$reset_color%}"
 
-  # 1) Compute branch and status
   b=$(
     command git symbolic-ref --quiet --short HEAD 2>/dev/null ||
     command git describe --tags --exact-match 2>/dev/null ||
     command git rev-parse --short HEAD 2>/dev/null
   ) || return
+
   short=$(_shorten_ticket "$b")
-  [[ $+functions[git_prompt_status] -eq 1 ]] && gs="$(git_prompt_status)"
+  [[ $+functions[git_prompt_status] -eq 1 ]] && gp_status="$(git_prompt_status)"
 
-  # 2) Take theme’s prefix/suffix (fall back to robbyrussell-like if unset)
-  prefix="${ZSH_THEME_GIT_PROMPT_PREFIX:-%{$fg_bold[green]%}git:(%{$reset_color%}}"
-  suffix="$ZSH_THEME_GIT_PROMPT_SUFFIX"
-
-  # 3) Derive the opening bracket color from the prefix (so we can match it)
-  #    Works with the common oh-my-zsh style: %{$fg_bold[green]%}
-  if [[ -z $open_color && $prefix =~ (%\{\$[^%]*%}) ]]; then
-    open_color="${match[1]}"
-  fi
-  [[ -z $open_color ]] && open_color="%{$fg_bold[green]%}"  # sane default
-
-  # 4) Build a suffix that includes a colored ')' matching the opening bracket.
-  if [[ -z $suffix ]]; then
-    derived_suffix="${open_color})%{$reset_color%}"
-  elif [[ $suffix != *")"* ]]; then
-    # Theme suffix has no ')': prepend a colored one that matches the opening paren
-    derived_suffix="${open_color})%{$reset_color%}${suffix}"
+  # Derive the opening 'git:(' color from your theme's prefix so we can match the closing ')'
+  local pfx="$ZSH_THEME_GIT_PROMPT_PREFIX"
+  if [[ $pfx =~ (%\{[^%]*m%}) ]]; then
+    open_color="${match[1]}"             # e.g. %{$fg_bold[blue]%}
+  elif [[ $pfx =~ (%F\{[[:alnum:]]+\}) ]]; then
+    open_color="${match[1]}"             # e.g. %F{blue}
   else
-    derived_suffix="$suffix"
+    open_color="%{$fg_bold[green]%}"     # sane default
   fi
 
-  print -r -- "${prefix}${short}${gs}${derived_suffix}"
+  # IMPORTANT: Do NOT add 'git:(' here — theme already printed it.
+  # We only add the branch+status and a colored closing ')' that matches the opener.
+  print -r -- "${short}${gp_status}${open_color})${reset}"
 }
