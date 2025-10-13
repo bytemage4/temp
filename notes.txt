@@ -1,7 +1,4 @@
-# --- debug file ---
-typeset -g SHORT_BRANCH_DEBUG=/tmp/zsh_git_branch_debug.log
-
-# Helper: shorten "feature/NT-123-rest" -> "NT-123"
+# Shorten "feature/NT-123-long-title" -> "NT-123"
 _shorten_ticket() {
   emulate -L zsh
   local base=${1##*/}
@@ -12,7 +9,6 @@ _shorten_ticket() {
   fi
 }
 
-# Robust override for robbyrussell's git segment
 git_prompt_info() {
   emulate -L zsh
   local b short gs prefix suffix
@@ -23,19 +19,26 @@ git_prompt_info() {
   ) || return
 
   short=$(_shorten_ticket "$b")
-  if typeset -f git_prompt_status >/dev/null; then
-    gs="$(git_prompt_status)"
+  [[ $+functions[git_prompt_status] -eq 1 ]] && gs="$(git_prompt_status)"
+
+  # Use theme’s prefix/suffix if present; otherwise fall back to robbyrussell-like colors
+  if [[ -n $ZSH_THEME_GIT_PROMPT_PREFIX ]]; then
+    prefix="$ZSH_THEME_GIT_PROMPT_PREFIX"
+  else
+    prefix="%{$fg_bold[green]%}git:(%{$reset_color%}"
   fi
 
-  # Use theme's colors/brackets if set, otherwise sensible fallbacks
-  prefix="${ZSH_THEME_GIT_PROMPT_PREFIX:-git:(}"
-  suffix="${ZSH_THEME_GIT_PROMPT_SUFFIX:-)}"
+  if [[ -n $ZSH_THEME_GIT_PROMPT_SUFFIX ]]; then
+    suffix="$ZSH_THEME_GIT_PROMPT_SUFFIX"
+  else
+    # Colored closing paren (green), then reset
+    suffix="%{$fg_bold[green]%})%{$reset_color%}"
+  fi
 
-  # Ensure we actually close the paren even if theme suffix is empty/mis-set
+  # If suffix lacks a closing paren, prepend a green one so the bracket is colored correctly
   if [[ $suffix != *")"* ]]; then
-    suffix=")$suffix"
+    suffix="%{$fg_bold[green]%})%{$reset_color%}${suffix}"
   fi
 
-  print -r -- "IN:[$b] OUT:[$short] PFX:[${(q)prefix}] SFX:[${(q)suffix}] STATUS:[$gs]" >> $SHORT_BRANCH_DEBUG
   print -r -- "${prefix}${short}${gs}${suffix}"
 }
