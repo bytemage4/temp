@@ -1,38 +1,24 @@
-@Target(ElementType.TYPE)
-@Retention(RetentionPolicy.RUNTIME)
-@SpringBootTest(
-  classes = ActuatorOnlyConfig.class,
-  webEnvironment = SpringBootTest.WebEnvironment.MOCK
-)
-@AutoConfigureMockMvc
-@ActiveProfiles("actuator")  // <- forces a separate cache key
-@TestPropertySource(properties = {
-  // Exclude heavy autoconfig you don’t need
-  "spring.autoconfigure.exclude=" +
-    "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration," +
-    "org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration"
-})
-public @interface ActuatorMvcTest {}
+# Print a shortened branch name:
+# - If it finds a JIRA-like key anywhere (e.g., NT-123), show just that.
+# - Otherwise, fall back to the normal branch name (short, or short SHA for detached HEAD).
+function git_current_branch() {
+  local ref
+  ref=$(
+    command git symbolic-ref --quiet --short HEAD 2>/dev/null ||
+    command git describe --tags --exact-match 2>/dev/null ||
+    command git rev-parse --short HEAD 2>/dev/null
+  ) || return
 
-@SpringBootConfiguration
-@EnableAutoConfiguration
-@ImportAutoConfiguration({
-  // minimal web + json stack
-  org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration.class,
-  org.springframework.boot.autoconfigure.http.HttpMessageConvertersAutoConfiguration.class,
-  org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration.class,
-  // actuator pieces for /actuator/health over MVC
-  org.springframework.boot.actuate.autoconfigure.endpoint.EndpointAutoConfiguration.class,
-  org.springframework.boot.actuate.autoconfigure.health.HealthContributorAutoConfiguration.class,
-  org.springframework.boot.actuate.autoconfigure.health.HealthEndpointAutoConfiguration.class,
-  org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointAutoConfiguration.class
-})
-class ActuatorOnlyConfig {}
+  # Trim any prefix like feature/, bugfix/, etc.
+  local base=${ref##*/}
 
-
-@Target(ElementType.TYPE)
-@Retention(RetentionPolicy.RUNTIME)
-@WebMvcTest  // default filters = true
-@ActiveProfiles("webmvc")                   // distinct cache key
-@TestPropertySource(properties = "test.slice=webmvc") // extra guard
-public @interface ControllerMvcTest {}
+  # If there's a KEY-123 pattern, extract and print just that.
+  # (Keeps letters+digits on the left side to support keys like NT or PROJ1.)
+  local ticket
+  ticket=$(print -r -- "$base" | sed -E 's/^.*([A-Za-z][A-Za-z0-9]*-[0-9]+).*$/\1/')
+  if [[ "$ticket" != "$base" || "$base" =~ '^[A-Za-z][A-Za-z0-9]*-[0-9]+' ]]; then
+    print -r -- "$ticket"
+  else
+    print -r -- "$base"
+  fi
+}
