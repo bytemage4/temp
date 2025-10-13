@@ -1,10 +1,10 @@
 # --- debug file ---
 typeset -g SHORT_BRANCH_DEBUG=/tmp/zsh_git_branch_debug.log
 
-# Helper: extract ticket key like NT-123 from any branch name
-function _shorten_ticket() {
+# Helper: shorten "feature/NT-123-rest" -> "NT-123"
+_shorten_ticket() {
   emulate -L zsh
-  local base=${1##*/}   # trim refs like feature/, bugfix/
+  local base=${1##*/}
   if [[ $base =~ ([A-Za-z][A-Za-z0-9]*-[0-9]+) ]]; then
     print -r -- ${match[1]}
   else
@@ -12,10 +12,10 @@ function _shorten_ticket() {
   fi
 }
 
-# Override robbyrussell's git segment with a shortened branch name
-function git_prompt_info() {
+# Robust override for robbyrussell's git segment
+git_prompt_info() {
   emulate -L zsh
-  local b short gp_status
+  local b short gs prefix suffix
   b=$(
     command git symbolic-ref --quiet --short HEAD 2>/dev/null ||
     command git describe --tags --exact-match 2>/dev/null ||
@@ -23,11 +23,19 @@ function git_prompt_info() {
   ) || return
 
   short=$(_shorten_ticket "$b")
-
   if typeset -f git_prompt_status >/dev/null; then
-    gp_status="$(git_prompt_status)"
+    gs="$(git_prompt_status)"
   fi
 
-  print -r -- "IN:[$b] OUT:[$short] STATUS:[$gp_status]" >> $SHORT_BRANCH_DEBUG
-  print -r -- "${ZSH_THEME_GIT_PROMPT_PREFIX}${short}${gp_status}${ZSH_THEME_GIT_PROMPT_SUFFIX}"
+  # Use theme's colors/brackets if set, otherwise sensible fallbacks
+  prefix="${ZSH_THEME_GIT_PROMPT_PREFIX:-git:(}"
+  suffix="${ZSH_THEME_GIT_PROMPT_SUFFIX:-)}"
+
+  # Ensure we actually close the paren even if theme suffix is empty/mis-set
+  if [[ $suffix != *")"* ]]; then
+    suffix=")$suffix"
+  fi
+
+  print -r -- "IN:[$b] OUT:[$short] PFX:[${(q)prefix}] SFX:[${(q)suffix}] STATUS:[$gs]" >> $SHORT_BRANCH_DEBUG
+  print -r -- "${prefix}${short}${gs}${suffix}"
 }
