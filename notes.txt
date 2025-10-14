@@ -11,8 +11,7 @@ _shorten_ticket() {
 
 git_prompt_info() {
   emulate -L zsh
-  local b short gp_status open_color reset="%{$reset_color%}"
-
+  local b short gs prefix suffix
   b=$(
     command git symbolic-ref --quiet --short HEAD 2>/dev/null ||
     command git describe --tags --exact-match 2>/dev/null ||
@@ -20,19 +19,26 @@ git_prompt_info() {
   ) || return
 
   short=$(_shorten_ticket "$b")
-  [[ $+functions[git_prompt_status] -eq 1 ]] && gp_status="$(git_prompt_status)"
+  [[ $+functions[git_prompt_status] -eq 1 ]] && gs="$(git_prompt_status)"
 
-  # Derive the opening 'git:(' color from your theme's prefix so we can match the closing ')'
-  local pfx="$ZSH_THEME_GIT_PROMPT_PREFIX"
-  if [[ $pfx =~ (%\{[^%]*m%}) ]]; then
-    open_color="${match[1]}"             # e.g. %{$fg_bold[blue]%}
-  elif [[ $pfx =~ (%F\{[[:alnum:]]+\}) ]]; then
-    open_color="${match[1]}"             # e.g. %F{blue}
+  # Use theme’s prefix/suffix if present; otherwise fall back to robbyrussell-like colors
+  if [[ -n $ZSH_THEME_GIT_PROMPT_PREFIX ]]; then
+    prefix="$ZSH_THEME_GIT_PROMPT_PREFIX"
   else
-    open_color="%{$fg_bold[green]%}"     # sane default
+    prefix="%{$fg_bold[green]%}git:(%{$reset_color%}"
   fi
 
-  # IMPORTANT: Do NOT add 'git:(' here — theme already printed it.
-  # We only add the branch+status and a colored closing ')' that matches the opener.
-  print -r -- "${short}${gp_status}${open_color})${reset}"
+  if [[ -n $ZSH_THEME_GIT_PROMPT_SUFFIX ]]; then
+    suffix="$ZSH_THEME_GIT_PROMPT_SUFFIX"
+  else
+    # Colored closing paren (green), then reset
+    suffix="%{$fg_bold[green]%})%{$reset_color%}"
+  fi
+
+  # If suffix lacks a closing paren, prepend a green one so the bracket is colored correctly
+  if [[ $suffix != *")"* ]]; then
+    suffix="%{$fg_bold[green]%})%{$reset_color%}${suffix}"
+  fi
+
+  print -r -- "${prefix}${short}${gs}${suffix}"
 }
